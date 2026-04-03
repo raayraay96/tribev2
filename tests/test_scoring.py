@@ -18,6 +18,7 @@ from tribev2.scoring import (
     score_combined,
     score_inverse_variance,
     score_pfc_stability,
+    temporal_smooth,
 )
 
 # Fake PFC data dimensions
@@ -212,3 +213,69 @@ class TestUnifiedScoring:
         pfc = _make_pfc_data()
         with pytest.raises(ValueError, match="whole_brain"):
             score_pfc_stability(pfc, method="activation_ratio")
+
+    def test_smoothing_applied_by_default(self):
+        pfc = _make_pfc_data()
+        scores_smooth, _ = score_pfc_stability(pfc, smooth=True)
+        scores_raw, _ = score_pfc_stability(pfc, smooth=False)
+        # Smoothed scores should differ from raw
+        assert not np.allclose(scores_smooth, scores_raw)
+
+    def test_smoothing_disabled(self):
+        pfc = _make_pfc_data()
+        cfg = ScoringConfig(smoothing_kernel=0)
+        scores, _ = score_pfc_stability(pfc, config=cfg, smooth=True)
+        scores_no_smooth, _ = score_pfc_stability(pfc, config=cfg, smooth=False)
+        np.testing.assert_array_almost_equal(scores, scores_no_smooth)
+
+
+class TestTemporalSmoothing:
+    def test_output_shape(self):
+        scores = np.random.rand(50)
+        smoothed = temporal_smooth(scores)
+        assert smoothed.shape == scores.shape
+
+    def test_output_range(self):
+        scores = np.random.rand(50)
+        smoothed = temporal_smooth(scores)
+        assert np.all(smoothed >= 0.0)
+        assert np.all(smoothed <= 1.0)
+
+    def test_reduces_noise(self):
+        rng = np.random.RandomState(42)
+        # Signal with noise
+        clean = np.ones(100) * 0.5
+        noisy = clean + rng.randn(100) * 0.1
+        smoothed = temporal_smooth(noisy)
+        # Smoothed should have lower variance than noisy input
+        assert np.std(smoothed) < np.std(noisy)
+
+    def test_zero_kernel_passthrough(self):
+        scores = np.random.rand(50)
+        cfg = ScoringConfig(smoothing_kernel=0)
+        smoothed = temporal_smooth(scores, cfg)
+        np.testing.assert_array_equal(smoothed, scores)
+
+    def test_asymmetric_preserves_drops(self):
+        # Create a signal with a sharp drop
+        scores = np.ones(20) * 0.8
+        scores[10:15] = 0.2  # sharp drop
+        cfg = ScoringConfig(asymmetric_smoothing=True, smoothing_kernel=5)
+        smoothed = temporal_smooth(scores, cfg)
+        # The sharp drop should be preserved (not smoothed away)
+        assert smoothed[12] <= 0.3, f"Drop not preserved: {smoothed[12]}"
+
+    def test_symmetric_smooths_drops(self):
+        scores = np.ones(20) * 0.8
+        scores[10:15] = 0.2  # sharp drop
+        cfg = ScoringConfig(asymmetric_smoothing=False, smoothing_kernel=5)
+        smoothed = temporal_smooth(scores, cfg)
+        # Without asymmetric, the drop edges should be smoothed
+        # The transition should be less sharp
+        assert smoothed[10] > 0.2, "Symmetric should smooth drop edges"
+
+    def test_short_signal_passthrough(self):
+        scores = np.array([0.5, 0.6])
+        cfg = ScoringConfig(smoothing_kernel=5)
+        smoothed = temporal_smooth(scores, cfg)
+        np.testing.assert_array_equal(smoothed, scores)

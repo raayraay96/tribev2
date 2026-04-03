@@ -53,6 +53,14 @@ class ScoringConfig:
     temporal_window : int
         Number of timesteps for rolling temporal stability calculation.
         Default: 5.
+    smoothing_kernel : int
+        Gaussian smoothing kernel size (number of timesteps). Must be odd.
+        Set to 0 to disable smoothing. Default: 5.
+    smoothing_sigma : float
+        Standard deviation for Gaussian kernel. Default: 1.0.
+    asymmetric_smoothing : bool
+        If True, smooth increases but preserve rapid drops. This prevents
+        smoothing from masking acute stability decreases. Default: True.
     """
 
     variance_scale: float = 100.0
@@ -60,6 +68,9 @@ class ScoringConfig:
     baseline_window: int = 10
     clip_range: tuple[float, float] = (0.0, 1.0)
     temporal_window: int = 5
+    smoothing_kernel: int = 5
+    smoothing_sigma: float = 1.0
+    asymmetric_smoothing: bool = True
 
 
 @dataclass
@@ -297,6 +308,76 @@ def _compute_temporal_stability(
     return np.clip(stability, 0.0, 1.0)
 
 
+def _gaussian_kernel(size: int, sigma: float = 1.0) -> np.ndarray:
+    """Create a 1D Gaussian kernel for temporal smoothing.
+
+    Parameters
+    ----------
+    size : int
+        Kernel size (must be odd).
+    sigma : float
+        Standard deviation of the Gaussian.
+
+    Returns
+    -------
+    kernel : np.ndarray of shape (size,)
+        Normalized Gaussian kernel.
+    """
+    if size % 2 == 0:
+        size += 1
+    x = np.arange(size) - size // 2
+    kernel = np.exp(-0.5 * (x / sigma) ** 2)
+    return kernel / kernel.sum()
+
+
+def temporal_smooth(
+    scores: np.ndarray,
+    config: ScoringConfig | None = None,
+) -> np.ndarray:
+    """Apply Gaussian temporal smoothing to stability scores.
+
+    Reduces per-timestep noise while preserving significant state changes.
+    With asymmetric smoothing enabled (default), rapid drops are preserved
+    to ensure the state machine can detect acute stability decreases.
+
+    Parameters
+    ----------
+    scores : np.ndarray of shape (n_timesteps,)
+        Raw or calibrated stability scores.
+    config : ScoringConfig or None
+        Configuration with smoothing parameters.
+
+    Returns
+    -------
+    smoothed : np.ndarray of shape (n_timesteps,)
+        Smoothed stability scores.
+    """
+    if config is None:
+        config = ScoringConfig()
+
+    if config.smoothing_kernel <= 0:
+        return scores.copy()
+
+    kernel_size = config.smoothing_kernel
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+
+    if len(scores) < kernel_size:
+        return scores.copy()
+
+    kernel = _gaussian_kernel(kernel_size, config.smoothing_sigma)
+    smoothed = np.convolve(scores, kernel, mode="same")
+
+    if config.asymmetric_smoothing:
+        # Preserve rapid drops: where raw score drops below smoothed,
+        # use the raw score instead (keeps acute decreases sharp)
+        drops = scores < smoothed
+        smoothed[drops] = scores[drops]
+
+    return np.clip(smoothed, config.clip_range[0], config.clip_range[1])
+
+
+
 def score_combined(
     pfc_vertices: np.ndarray,
     config: ScoringConfig | None = None,
@@ -341,6 +422,7 @@ def score_pfc_stability(
     whole_brain: np.ndarray | None = None,
     config: ScoringConfig | None = None,
     calibrate: bool = True,
+    smooth: bool = True,
 ) -> tuple[np.ndarray, SessionBaseline]:
     """Unified scoring interface with automatic baseline calibration.
 
@@ -361,11 +443,13 @@ def score_pfc_stability(
         Scoring configuration.
     calibrate : bool
         Whether to apply per-session baseline calibration.
+    smooth : bool
+        Whether to apply temporal smoothing.
 
     Returns
     -------
     scores : np.ndarray of shape (n_timesteps,)
-        Calibrated stability scores ∈ [0, 1].
+        Calibrated (and optionally smoothed) stability scores ∈ [0, 1].
     baseline : SessionBaseline
         Baseline statistics used for calibration.
     """
@@ -400,5 +484,9 @@ def score_pfc_stability(
         )
     else:
         scores = raw_scores
+
+    # Temporal smoothing
+    if smooth and config.smoothing_kernel > 0:
+        scores = temporal_smooth(scores, config)
 
     return scores, baseline
