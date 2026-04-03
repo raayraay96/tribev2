@@ -95,8 +95,6 @@ class ExtractWordsFromAudio(EventsTransform):
     def _get_transcript_from_audio(wav_filename: Path, language: str) -> pd.DataFrame:
         import json
         import os
-        import subprocess
-        import tempfile
 
         language_codes = dict(
             english="en", french="fr", spanish="es", dutch="nl", chinese="zh"
@@ -104,46 +102,75 @@ class ExtractWordsFromAudio(EventsTransform):
         if language not in language_codes:
             raise ValueError(f"Language {language} not supported")
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        compute_type = "float16"
+        # Force WhisperX to CPU to avoid VRAM competition with TRIBE v2 model
+        # on V100 16GB. TRIBE needs the GPU; transcription can run on CPU.
+        device = "cpu"
+        compute_type = "float32"
 
-        with tempfile.TemporaryDirectory() as output_dir:
-            logger.info("Running whisperx via uvx...")
-            cmd = [
-                "uvx",
-                "whisperx",
-                str(wav_filename),
-                "--model",
+        # Try direct Python import first (avoids uvx cuDNN conflicts)
+        try:
+            import whisperx as wx
+            logger.info("Running whisperx directly (conda env)...")
+
+            model = wx.load_model(
                 "large-v3",
-                "--language",
-                language_codes[language],
-                "--device",
-                device,
-                "--compute_type",
-                compute_type,
-                "--batch_size",
-                "16",
-                "--align_model",
-                "WAV2VEC2_ASR_LARGE_LV60K_960H" if language == "english" else "",
-                "--output_dir",
-                output_dir,
-                "--output_format",
-                "json",
-            ]
-            cmd = [c for c in cmd if c]  # remove empty args
-            env = {k: v for k, v in os.environ.items() if k != "MPLBACKEND"}
-            result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            if result.returncode != 0:
-                raise RuntimeError(f"whisperx failed:\n{result.stderr}")
+                device=device,
+                compute_type=compute_type,
+                language=language_codes[language],
+            )
+            audio = wx.load_audio(str(wav_filename))
+            result = model.transcribe(audio, batch_size=16, language=language_codes[language])
 
-            json_path = Path(output_dir) / f"{wav_filename.stem}.json"
-            transcript = json.loads(json_path.read_text())
+            # Align
+            align_model_name = "WAV2VEC2_ASR_LARGE_LV60K_960H" if language == "english" else None
+            model_a, metadata = wx.load_align_model(
+                language_code=language_codes[language],
+                device=device,
+                model_name=align_model_name,
+            )
+            result = wx.align(
+                result["segments"], model_a, metadata, audio, device,
+                return_char_alignments=False,
+            )
+            transcript_segments = result["segments"]
+
+        except ImportError:
+            logger.info("whisperx not importable, falling back to uvx subprocess...")
+            import subprocess
+            import tempfile
+
+            with tempfile.TemporaryDirectory() as output_dir:
+                cmd = [
+                    "uvx",
+                    "whisperx",
+                    str(wav_filename),
+                    "--model", "large-v3",
+                    "--language", language_codes[language],
+                    "--device", device,
+                    "--compute_type", compute_type,
+                    "--batch_size", "16",
+                    "--align_model",
+                    "WAV2VEC2_ASR_LARGE_LV60K_960H" if language == "english" else "",
+                    "--output_dir", output_dir,
+                    "--output_format", "json",
+                ]
+                cmd = [c for c in cmd if c]
+                env = {k: v for k, v in os.environ.items() if k != "MPLBACKEND"}
+                env["UV_CACHE_DIR"] = os.environ.get("UV_CACHE_DIR", "/scratch/scholar/edraymon/.uv-cache")
+                env["XDG_CACHE_HOME"] = os.environ.get("XDG_CACHE_HOME", "/scratch/scholar/edraymon/.cache")
+                result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+                if result.returncode != 0:
+                    raise RuntimeError(f"whisperx failed:\n{result.stderr}")
+
+                json_path = Path(output_dir) / f"{wav_filename.stem}.json"
+                transcript_data = json.loads(json_path.read_text())
+                transcript_segments = transcript_data["segments"]
 
         words = []
-        for i, segment in enumerate(transcript["segments"]):
+        for i, segment in enumerate(transcript_segments):
             sentence = segment["text"]
             sentence = sentence.replace('"', "")
-            for word in segment["words"]:
+            for word in segment.get("words", []):
                 if "start" not in word:
                     continue
                 word_dict = {

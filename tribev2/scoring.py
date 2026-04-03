@@ -63,7 +63,7 @@ class ScoringConfig:
         smoothing from masking acute stability decreases. Default: True.
     """
 
-    variance_scale: float = 100.0
+    variance_scale: float = 1.0
     combined_alpha: float = 0.6
     baseline_window: int = 10
     clip_range: tuple[float, float] = (0.0, 1.0)

@@ -48,7 +48,7 @@ def _make_brain_data(
 class TestScoringConfig:
     def test_defaults(self):
         cfg = ScoringConfig()
-        assert cfg.variance_scale == 100.0
+        assert cfg.variance_scale == 1.0
         assert cfg.combined_alpha == 0.6
         assert cfg.baseline_window == 10
         assert cfg.clip_range == (0.0, 1.0)
