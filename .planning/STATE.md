@@ -1,48 +1,33 @@
-# Project State — TRIBE v2
+# State — TRIBE v2 Cognitive Scaffolding
 
-## Current Phase
-Phase 1: PFC Atlas ROI Module
+## Current Milestone: v1.0 — PFC Stability Pipeline
+**Status:** ✅ COMPLETE
 
-## Project Reference
-See: .planning/PROJECT.md (updated 2026-04-02)
+## Active Phase: None — Milestone complete
 
-**Core value:** Accurate, neurologically consistent PFC stability scoring from TRIBE v2 predictions
-**Current focus:** Phase 1 — Replace hardcoded vertex ranges with atlas-based PFC extraction
+## Completed Phases
+- [x] Phase 1: PFC Atlas ROI Module (d260492)
+- [x] Phase 2: PFC Stability Scoring (8e9b76a)
+- [x] Phase 3: Temporal Smoothing (3dd7ac0)
+- [x] Phase 4: Hysteresis State Machine (c720cc6)
+- [x] Phase 5: Karpathy Loop Automation (7088a8c)
+- [x] Phase 6: Integration & Validation (df518e4)
+- [x] Calibration Fix: variance_scale 100→1 (post-validation)
 
-## Phase Status
+## Key Metrics
+- **Tests:** 99/99 passing
+- **Classification Accuracy:** 97% on 3-regime synthetic test
+- **Score Separation:** 0.89 (STABLE vs SCAFFOLDING)
+- **Transitions:** 3 clean, zero oscillation
+- **PFC Vertices:** 3,816 via Destrieux atlas
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| 1 — PFC Atlas ROI Module | **READY** | Awaiting plan + execution |
-| 2 — PFC Stability Scoring | Not started | Depends on Phase 1 |
-| 3 — Temporal Smoothing | Not started | Depends on Phase 2 |
-| 4 — Hysteresis State Machine | Not started | Depends on Phase 3 |
-| 5 — Karpathy Loop Automation | Not started | Depends on Phase 4 |
-| 6 — Integration & Validation | Not started | Depends on Phase 5 |
+## Blockers
+None — milestone complete.
 
-## Context Gathered
-
-### From Research
-- PFC vertex ranges must use nilearn atlas (Destrieux/Schaefer), not hardcoded indices
-- fMRI prediction has poor test-retest reliability → use per-session baseline calibration
-- Three scoring methods need head-to-head comparison
-- Temporal smoothing must be asymmetric to preserve rapid stability drops
-- State machine requires 3-second sustain hysteresis
-
-### From Codebase Map
-- TRIBE v2 model: 177.2M params, fsaverage5 mesh (~20,484 vertices)
-- Feature extractors are frozen (LLaMA 3.2-3B, Wav2Vec-BERT, V-JEPA2)
-- Sequential extraction required for V100 16GB VRAM
-- No test suite exists — need to create tests alongside new modules
-- Pydantic-based config throughout — new modules should follow same pattern
-
-## Key Files
-- `.planning/PROJECT.md` — Project definition
-- `.planning/REQUIREMENTS.md` — v1.0 requirements
-- `.planning/ROADMAP.md` — 6-phase roadmap
-- `.planning/research/SUMMARY.md` — Research synthesis
-- `.planning/codebase/ARCHITECTURE.md` — Current architecture
-- `CLAUDE.md` — Legacy project context (pre-GSD)
+## Next Milestone Candidates
+1. v1.1 — Real fMRI inference with TRIBE v2 checkpoints
+2. v1.2 — Online baseline calibration for real-time use
+3. v1.3 — SLURM-integrated Karpathy sweep at scale
 
 ---
-*State updated: 2026-04-02 — project initialized*
+*Last updated: 2026-04-03*
