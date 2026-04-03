@@ -1,0 +1,51 @@
+{
+  "mode": "yolo",
+  "granularity": "standard",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "auto_advance": true,
+    "nyquist_validation": true,
+    "security_enforcement": true,
+    "security_asvs_level": 1,
+    "security_block_on": "high",
+    "discuss_mode": "assumptions",
+    "research_before_questions": true,
+    "skip_discuss": false,
+    "text_mode": true,
+    "use_worktrees": false
+  },
+  "planning": {
+    "commit_docs": true,
+    "search_gitignored": false,
+    "sub_repos": []
+  },
+  "parallelization": {
+    "enabled": true,
+    "plan_level": true,
+    "task_level": false,
+    "skip_checkpoints": true,
+    "max_concurrent_agents": 4,
+    "min_plans_for_parallel": 2
+  },
+  "gates": {
+    "confirm_project": false,
+    "confirm_phases": false,
+    "confirm_roadmap": false,
+    "confirm_breakdown": false,
+    "confirm_plan": false,
+    "execute_next_plan": false,
+    "issues_review": false,
+    "confirm_transition": false
+  },
+  "safety": {
+    "always_confirm_destructive": false,
+    "always_confirm_external_services": false
+  },
+  "hooks": {
+    "context_warnings": true
+  },
+  "project_code": "TRIBE",
+  "agent_skills": {}
+}
