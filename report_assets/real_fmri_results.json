@@ -1,0 +1,87 @@
+{
+  "experiment": "scaffolding_v2_atlas_pipeline",
+  "description": "Real TRIBE v2 predictions through optimized atlas-based scaffolding pipeline",
+  "config": {
+    "scoring_method": "inverse_variance",
+    "variance_scale": 1,
+    "smoothing_kernel": 5,
+    "asymmetric_smoothing": true,
+    "lower_threshold": 0.25,
+    "upper_threshold": 0.75,
+    "sustain_timesteps": 3,
+    "pfc_extraction": "destrieux_atlas",
+    "pfc_vertices": 3816
+  },
+  "stimuli_results": {
+    "neutral_text": {
+      "n_timesteps": 13,
+      "mean_score": 0.928358381272495,
+      "std_score": 0.10466942490172867,
+      "min_score": 0.6817513512403246,
+      "max_score": 0.9854088618620034,
+      "score_range": 0.3036575106216788,
+      "state_distribution": {
+        "STABLE": 0.692,
+        "EDGE": 0.308,
+        "SCAFFOLDING": 0.0
+      },
+      "total_transitions": 2
+    },
+    "cognitive_load": {
+      "n_timesteps": 16,
+      "mean_score": 0.9271171550828592,
+      "std_score": 0.09282608596935384,
+      "min_score": 0.6819826559125244,
+      "max_score": 0.9815270355364133,
+      "score_range": 0.2995443796238889,
+      "state_distribution": {
+        "STABLE": 0.75,
+        "EDGE": 0.25,
+        "SCAFFOLDING": 0.0
+      },
+      "total_transitions": 2
+    },
+    "emotional_arousal": {
+      "n_timesteps": 13,
+      "mean_score": 0.9283717661155791,
+      "std_score": 0.10439285709689343,
+      "min_score": 0.6837114795871284,
+      "max_score": 0.9839069476360721,
+      "score_range": 0.3001954680489437,
+      "state_distribution": {
+        "STABLE": 0.692,
+        "EDGE": 0.308,
+        "SCAFFOLDING": 0.0
+      },
+      "total_transitions": 2
+    },
+    "relaxation": {
+      "n_timesteps": 16,
+      "mean_score": 0.9393027305799753,
+      "std_score": 0.0971993019870013,
+      "min_score": 0.6817531762803329,
+      "max_score": 0.9914449453353882,
+      "score_range": 0.30969176905505524,
+      "state_distribution": {
+        "STABLE": 0.75,
+        "EDGE": 0.25,
+        "SCAFFOLDING": 0.0
+      },
+      "total_transitions": 2
+    },
+    "sustained_attention": {
+      "n_timesteps": 17,
+      "mean_score": 0.9389321851573774,
+      "std_score": 0.09374141781864168,
+      "min_score": 0.6809480503951679,
+      "max_score": 0.9844568371772766,
+      "score_range": 0.3035087867821087,
+      "state_distribution": {
+        "STABLE": 0.765,
+        "EDGE": 0.235,
+        "SCAFFOLDING": 0.0
+      },
+      "total_transitions": 2
+    }
+  }
+}
